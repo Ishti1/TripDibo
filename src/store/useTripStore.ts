@@ -193,13 +193,23 @@ export const useTripStore = create<TripStore>()(
       },
 
       updateTrip: (id, updates) => {
-        set((state) => ({
-          trips: state.trips.map((t) => {
-            if (t.id !== id) return t;
-            const budgetChanged = (updates.budget !== undefined && updates.budget !== t.budget) || (updates.currency !== undefined && updates.currency !== t.currency);
-            return { ...t, ...(budgetChanged && !updates.budgetPlan ? { budgetPlan: undefined } : {}), ...updates };
-          }),
-        }));
+        set((state) => {
+          let activity: ActivityLog | null = null;
+          if (updates.budget !== undefined || updates.currency !== undefined) {
+             const trip = state.trips.find(t => t.id === id);
+             if (trip && (updates.budget !== trip.budget || updates.currency !== trip.currency)) {
+                 activity = { id: 'act_' + crypto.randomUUID(), tripId: id, user: 'You', action: 'updated the budget for', target: trip.title, time: 'Just now' };
+             }
+          }
+          return {
+            trips: state.trips.map((t) => {
+              if (t.id !== id) return t;
+              const budgetChanged = (updates.budget !== undefined && updates.budget !== t.budget) || (updates.currency !== undefined && updates.currency !== t.currency);
+              return { ...t, ...(budgetChanged && !updates.budgetPlan ? { budgetPlan: undefined } : {}), ...updates };
+            }),
+            activities: activity ? [activity, ...state.activities.slice(0, 19)] : state.activities
+          };
+        });
 
         // Fire & Forget: Sync to Cloud
         updateTripOnServer(id, updates).catch(err => console.error("Failed to update trip on server:", err));
@@ -244,9 +254,11 @@ export const useTripStore = create<TripStore>()(
           const existingExpense = state.expenses.find(e => e.bookingId === id);
           const otherExpenses = state.expenses.filter(e => e.bookingId !== id);
           const linkedExpense: Expense = { id: existingExpense?.id || 'exp_' + crypto.randomUUID(), bookingId: id, tripId: data.tripId, title: data.title, amount: data.cost, paidBy: data.paidBy || 'You', category: data.kind, date: data.start.slice(0,10) };
+          const newActivity: ActivityLog = { id: 'act_' + crypto.randomUUID(), tripId: data.tripId, user: 'You', action: data.id ? 'updated a booking:' : 'added a booking:', target: data.title, time: 'Just now' };
           return {
             bookings: state.bookings.some(b => b.id === id) ? state.bookings.map(b => b.id === id ? booking : b) : [...state.bookings, booking],
             expenses: data.recordExpense && data.cost > 0 ? [linkedExpense,...otherExpenses] : otherExpenses,
+            activities: [newActivity, ...state.activities.slice(0, 19)],
           };
         });
         return id;
