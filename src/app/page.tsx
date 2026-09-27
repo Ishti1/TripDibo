@@ -20,7 +20,7 @@ function Dashboard() {
 
   useEffect(() => {
     if (session?.user) {
-      getUserTrips().then(trips => setCloudTrips(trips as Trip[])).catch(console.error);
+      getUserTrips().then(trips => setCloudTrips(trips as unknown as Trip[])).catch(console.error);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.email]);

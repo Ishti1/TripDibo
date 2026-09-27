@@ -40,7 +40,7 @@ export default function TripPage() {
   function save(e: React.FormEvent) {
     e.preventDefault(); if (!form.title.trim()) return;
     if (modal === 'itinerary') { const data = { tripId: id, title: form.title.trim(), date: form.date, time: form.time, category: form.category as ItineraryItem['category'], location: form.location.trim(), estimatedCost: form.estimatedCost.trim() || 'Not estimated' }; if (editPlanId) store.updateItineraryItem(editPlanId, data); else store.addItineraryItem(data); }
-    if (modal === 'expenses') { let amount = Number(form.amount); if (!Number.isFinite(amount) || amount <= 0) return; if (expensePer === 'person') amount = amount * (trip.members || 1); store.addExpense({ tripId: id, title: form.title.trim(), amount, paidBy: form.person.trim() || 'You', date: form.date }); }
+    if (modal === 'expenses') { let amount = Number(form.amount); if (!Number.isFinite(amount) || amount <= 0) return; if (expensePer === 'person') amount = amount * (trip!.members || 1); store.addExpense({ tripId: id, title: form.title.trim(), amount, paidBy: form.person.trim() || 'You', date: form.date }); }
     if (modal === 'packing') store.addPackingItem({ tripId: id, title: form.title.trim(), assignedTo: form.person.trim() || 'You' });
     if (modal === 'ideas') store.addIdea({ tripId: id, title: form.title.trim(), description: form.description.trim(), author: form.person.trim() || 'You' });
     setModal(null); setNotice('Added to your adventure.');
