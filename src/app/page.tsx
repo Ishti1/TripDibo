@@ -2,9 +2,10 @@
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowUpRight, ArrowRight, Plus, Search, LayoutGrid, List, Heart, MapPin, CalendarDays, Plane, Compass, CheckCheck, Download, SlidersHorizontal, Sparkles, Route, Pencil, X } from 'lucide-react';
+import { ArrowUpRight, ArrowRight, Plus, Search, LayoutGrid, List, Heart, MapPin, CalendarDays, Plane, Compass, CheckCheck, Download, SlidersHorizontal, Sparkles, Route, Pencil, X, Users } from 'lucide-react';
 import { Trip, useTripStore } from '@/store/useTripStore';
 import TripForm from '@/components/TripForm';
+import Modal from '@/components/Modal';
 import TopbarUser from '@/components/TopbarUser';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -56,12 +57,34 @@ function Dashboard() {
   
   const firstName = session?.user?.name ? session.user.name.split(' ')[0] : 'explorer';
 
-  const handlePlanTrip = (state: { trip?: Trip; initial?: Partial<Trip> } = {}) => {
+  const [actionModal, setActionModal] = useState<'none' | 'choice' | 'join'>('none');
+  const [joinLink, setJoinLink] = useState('');
+
+  const handlePlanTrip = (state?: { trip?: Trip; initial?: Partial<Trip> }) => {
     if (!session) {
       router.push('/login');
       return;
     }
+    if (!state || (!state.trip && !state.initial)) {
+      setActionModal('choice');
+      return;
+    }
     setModal(state);
+  };
+
+  const handleJoinTrip = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!joinLink) return;
+    
+    let tripId = joinLink.trim();
+    if (tripId.includes('trip/')) {
+      tripId = tripId.split('trip/')[1].split('?')[0].split('#')[0].split('/')[0];
+    }
+    
+    if (tripId) {
+      router.push(`/trip/${tripId}`);
+      setActionModal('none');
+    }
   };
 
   return <main className="dashboard">
@@ -84,6 +107,42 @@ function Dashboard() {
     {view === 'overview' && <aside className="right-column"><section className="next-card"><div className="section-heading"><h3>On the horizon</h3><Plane size={18}/></div>{nextTrip ? <><span className="eyebrow">YOUR NEXT DEPARTURE</span><h2>{nextTrip.destination}</h2><p>{dateLabel(nextTrip.startDate)}</p><Link className="button secondary" href={`/trip/${nextTrip.id}`}>Pick up your plans <ArrowUpRight size={16}/></Link></> : <><div className="horizon-illustration"><span/><Plane size={27}/></div><h3>Something to look forward to.</h3><p>Add dates to a trip and your next getaway will appear right here.</p><button className="text-link" onClick={() => handlePlanTrip()}>Put it on the calendar <ArrowRight size={15}/></button></>}</section><section className="starter-card"><span className="starter-icon"><Sparkles size={21}/></span><span className="eyebrow">A HEAD START HELPS</span><h3>Less blank page.<br/>More possibility.</h3><p>Build your trip with ready-to-use itinerary and packing starters.</p><button onClick={() => handlePlanTrip()}>Start your adventure <ArrowUpRight size={17}/></button><span className="starter-decoration">✳</span></section><section className="activity-card"><div className="section-heading"><h3>The latest chapter</h3><span className="activity-dot"/></div>{activities.length ? activities.slice(0,3).map(a => <div className="activity-item" key={a.id}><span className="activity-line-dot"/><div><p><strong>{a.user}</strong> {a.action} <strong>{a.target}</strong></p><small>{a.time}</small></div></div>) : <p className="activity-empty">Your travel story is waiting to be written. New plans and updates will appear here.</p>}</section></aside>}
     </div><footer className="dashboard-footer"><span>Made for the journey, not just the destination.</span><span>tripdibo <Compass size={13}/></span></footer>
     {modal && <TripForm trip={modal.trip} initial={modal.initial} onClose={() => setModal(null)}/>}
+    {actionModal === 'choice' && (
+      <Modal title="Plan your next adventure" subtitle="How would you like to begin?" onClose={() => setActionModal('none')}>
+        <div className="choice-modal">
+          <button className="choice-button" onClick={() => { setActionModal('none'); setModal({}); }}>
+            <span className="choice-icon"><Plus size={24}/></span>
+            <div>
+              <h3>Create a new trip</h3>
+              <p>Start fresh with a blank canvas and invite friends later.</p>
+            </div>
+            <ArrowRight size={18}/>
+          </button>
+          <button className="choice-button" onClick={() => setActionModal('join')}>
+            <span className="choice-icon"><Users size={24}/></span>
+            <div>
+              <h3>Collaborate with friends</h3>
+              <p>Join an existing trip using a share link or ID.</p>
+            </div>
+            <ArrowRight size={18}/>
+          </button>
+        </div>
+      </Modal>
+    )}
+    {actionModal === 'join' && (
+      <Modal title="Join an adventure" subtitle="Paste the share link you received from a friend." onClose={() => setActionModal('none')}>
+        <form className="form-stack" onSubmit={handleJoinTrip}>
+          <label>
+            Trip Link
+            <input autoFocus required value={joinLink} onChange={e => setJoinLink(e.target.value)} placeholder="https://tripdibo.vercel.app/trip/clk9..."/>
+          </label>
+          <div className="form-actions">
+            <button type="button" className="button" onClick={() => setActionModal('none')}>Cancel</button>
+            <button type="submit" className="button primary">Join trip</button>
+          </div>
+        </form>
+      </Modal>
+    )}
     {notice && <div className="toast" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification"><X size={15}/></button></div>}
   </main>;
 }
