@@ -16,6 +16,7 @@ export default function BookingsPanel({ trip }: { trip: Trip }) {
   const [deleting, setDeleting] = useState<Booking | null>(null);
   const [filter, setFilter] = useState<BookingKind | 'all'>('all');
   const [notice, setNotice] = useState('');
+  const [helpModal, setHelpModal] = useState(false);
   const bookings = store.bookings.filter(b => b.tripId === trip.id).sort((a,b) => a.start.localeCompare(b.start));
   const visible = bookings.filter(b => filter === 'all' || b.kind === filter);
   const total = bookings.filter(b => b.status !== 'cancelled' && b.currency === (trip.currency || 'USD')).reduce((s,b) => s + b.cost, 0);
@@ -39,6 +40,41 @@ export default function BookingsPanel({ trip }: { trip: Trip }) {
       <details className="booking-details"><summary>Traveler, notes & documents {b.attachments.length > 0 && `(${b.attachments.length})`}</summary><p><strong>Traveler:</strong> {b.traveler || 'Not added'}</p>{b.notes && <p className="booking-notes">{b.notes}</p>}{b.url && <a className="text-link" href={b.url} target="_blank" rel="noopener noreferrer">Open booking page <ExternalLink size={13}/></a>}<div className="ticket-list">{b.attachments.map(f => <button key={f.id} onClick={() => downloadTicket(f).catch(e => setNotice(e.message))}><Paperclip size={14}/><span>{f.name}</span><Download size={14}/></button>)}</div></details>
       <footer><div><strong>{money(b.cost,b.currency)}</strong><span>{b.recordExpense ? 'Included in expenses' : 'Not recorded as an expense'}</span></div>{b.status !== 'cancelled' && <button className="text-link" onClick={() => addToTimeline(b)}><CalendarPlus size={14}/>{store.itinerary.some(i => i.bookingId === b.id) ? 'Update timeline' : 'Add to timeline'}</button>}</footer>
     </article>; })}</div> : <div className="detail-empty"><Ticket/><h3>{bookings.length ? 'No bookings in this category.' : 'All booked? Keep it together.'}</h3><p>Save hotel reservations, air tickets, bus and train journeys, confirmation numbers, and ticket documents.</p><button className="button secondary" onClick={() => setEditing('new')}><Plus size={15}/>Save a booking</button></div>}
+    
+    <div style={{ textAlign: 'center', marginTop: '32px' }}>
+      <button className="text-link" onClick={() => setHelpModal(true)}>Need help with bookings? <ExternalLink size={12} style={{marginLeft: '4px'}}/></button>
+    </div>
+
+    {helpModal && <Modal title="Need help with bookings?" subtitle="Find the best flights, stays, and transport for your trip." onClose={() => setHelpModal(false)}>
+      <div className="booking-sites" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="site-group">
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}><Plane size={15}/> Flights</h4>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <a href="https://www.google.com/flights" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Google Flights</a>
+            <a href="https://www.skyscanner.net/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Skyscanner</a>
+            <a href="https://www.kayak.com/flights" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Kayak</a>
+          </div>
+        </div>
+        <div className="site-group">
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}><Hotel size={15}/> Hotels & Stays</h4>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <a href="https://www.booking.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Booking.com</a>
+            <a href="https://www.airbnb.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Airbnb</a>
+            <a href="https://www.agoda.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Agoda</a>
+          </div>
+        </div>
+        <div className="site-group">
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}><TrainFront size={15}/> Trains & Buses</h4>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <a href="https://www.rome2rio.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Rome2rio</a>
+            <a href="https://www.thetrainline.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Trainline</a>
+            <a href="https://www.omio.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Omio</a>
+          </div>
+        </div>
+      </div>
+      <div className="modal-footer"><button className="button secondary" onClick={() => setHelpModal(false)}>Close</button></div>
+    </Modal>}
+
     {editing && <BookingForm trip={trip} booking={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} onSaved={() => setNotice('Booking saved, including any attached tickets.')}/>}
     {deleting && <Modal title="Remove this booking?" subtitle="Recorded expenses are kept. Attached ticket files will be removed from this browser." onClose={() => setDeleting(null)}><p>{deleting.title}</p><div className="modal-footer"><button className="button secondary" onClick={() => setDeleting(null)}>Keep booking</button><button className="button danger" onClick={async () => { const target=deleting; try { await Promise.all(target.attachments.map(f => removeTicket(f.id))); store.deleteBooking(target.id); setDeleting(null); setNotice('Booking removed. Any recorded payment remains in expenses.'); } catch { setNotice('Could not remove the ticket files. Please try again.'); } }}>Remove booking</button></div></Modal>}
     {notice && <div className="toast" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification"><X size={15}/></button></div>}
