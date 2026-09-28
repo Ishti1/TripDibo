@@ -141,12 +141,14 @@ export default function TripPage() {
     {trip.description && <p className="detail-notes">{trip.description}</p>}
     <nav className="detail-tabs" aria-label="Trip sections">{(['itinerary','bookings','expenses','packing','ideas','assistant'] as Tab[]).map(t => { const Icon = icons[t]; return <button key={t} className={tab === t ? 'active' : ''} onClick={() => { setTab(t); setSubTab('common'); }} aria-current={tab === t ? 'page' : undefined}><Icon size={17}/>{tabLabels[t]}{t !== "assistant" && <span className="count-badge">{counts[t]}</span>}</button>; })}</nav>
     {(tab === 'packing' || tab === 'expenses' || tab === 'bookings') && activeSubTabs.length > 0 && (
-      <div className="filter-tabs" style={{ padding: '0 22px', marginTop: '16px', overflow: 'auto', borderBottom: '1px solid var(--line)' }}>
-        {activeSubTabs.map(t => (
-          <button key={t} className={subTab === t ? 'active' : ''} onClick={() => setSubTab(t)}>
-            {t === 'common' ? 'Common Trip' : t === userId ? 'My Personal Tab' : t.split('@')[0] + "'s Tab"}
-          </button>
-        ))}
+      <div className="detail-content" style={{ marginTop: '-10px', marginBottom: '20px' }}>
+        <div className="filter-tabs" style={{ borderBottom: '1px solid var(--line)' }}>
+          {activeSubTabs.map(t => (
+            <button key={t} className={subTab === t ? 'active' : ''} onClick={() => setSubTab(t)}>
+              {t === 'common' ? 'Common Trip' : t === userId ? 'My Personal Tab' : t.split('@')[0] + "'s Tab"}
+            </button>
+          ))}
+        </div>
       </div>
     )}
     {tab === "bookings" && <BookingsPanel trip={trip} subTab={subTab} canEdit={canEdit}/>}
