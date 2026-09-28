@@ -211,9 +211,9 @@ function BookingHelpWidget() {
 
 function SpecialOffersWidget() {
   const partners = [
-    { name: 'GoZayaan', url: 'https://www.gozayaan.com', logo: 'https://logo.clearbit.com/gozayaan.com' },
-    { name: 'Trip.com', url: 'https://www.trip.com', logo: 'https://logo.clearbit.com/trip.com' },
-    { name: 'ShareTrip', url: 'https://sharetrip.net', logo: 'https://logo.clearbit.com/sharetrip.net' },
+    { name: 'GoZayaan', url: 'https://www.gozayaan.com', logo: 'https://www.google.com/s2/favicons?domain=gozayaan.com&sz=64' },
+    { name: 'Trip.com', url: 'https://www.trip.com', logo: 'https://www.google.com/s2/favicons?domain=trip.com&sz=64' },
+    { name: 'ShareTrip', url: 'https://sharetrip.net', logo: 'https://www.google.com/s2/favicons?domain=sharetrip.net&sz=64' },
     { name: 'TripNest', url: '#', icon: true }
   ];
   const [index, setIndex] = useState(0);
@@ -232,7 +232,7 @@ function SpecialOffersWidget() {
         <Tag size={18} color="var(--muted)" />
       </div>
       <p style={{ fontSize: '10px', lineHeight: 1.9, color: 'var(--muted)', margin: '0 0 16px' }}>
-        Explore special travel deals and discounts across the world from our partners.
+        Explore different travel plans and offers across different sites.
       </p>
       
       <div style={{ height: '48px', position: 'relative' }}>
