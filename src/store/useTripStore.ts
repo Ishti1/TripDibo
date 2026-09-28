@@ -26,6 +26,7 @@ export type Expense = {
   paidBy: string;
   category?: string;
   date: string;
+  expensePer?: 'group' | 'person';
 };
 
 export type PackingItem = {
