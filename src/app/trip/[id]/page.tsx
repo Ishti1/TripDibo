@@ -1,9 +1,10 @@
 "use client";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ArrowUpRight, CalendarDays, MapPin, Users, Plus, Plane, Hotel, Coffee, Compass, Wallet, Check, Package, Trash2, ThumbsUp, Lightbulb, Route, Pencil, Download, Sparkles, Heart, X, Ticket, Bot } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CalendarDays, MapPin, Users, Plus, Plane, Hotel, Coffee, Compass, Wallet, Check, Package, Trash2, ThumbsUp, Lightbulb, Route, Pencil, Download, Sparkles, Heart, X, Ticket, Bot, Share2 } from 'lucide-react';
 import { ItineraryItem, useTripStore } from '@/store/useTripStore';
+import toast from 'react-hot-toast';
 import BookingsPanel from '@/components/BookingsPanel';
 import AssistantPanel from '@/components/AssistantPanel';
 import { removeTicket } from '@/lib/ticket-files';
@@ -11,6 +12,8 @@ import TopbarUser from '@/components/TopbarUser';
 import Modal from '@/components/Modal';
 import TripForm from '@/components/TripForm';
 import { dateLabel, downloadFile, localDate, money, tripStatus } from '@/lib/travel';
+import { getSharedTrip } from '@/app/actions/trip';
+
 type Tab = 'itinerary' | 'expenses' | 'packing' | 'ideas' | 'bookings' | 'assistant';
 type FormKind = Exclude<Tab,'bookings'|'assistant'> | 'starter' | 'delete' | null;
 const categoryIcons = { activity: Compass, food: Coffee, transport: Plane, hotel: Hotel };
@@ -19,9 +22,28 @@ const starterActivities: Record<string, { title: string; time: string; category:
   Adventure: [{ title: 'Arrive & prepare for the adventure', time: '14:00', category: 'hotel' }, { title: 'Discover a scenic walking route', time: '08:00', category: 'activity' }, { title: 'Explore the outdoors', time: '09:00', category: 'activity' }],
   Culture: [{ title: 'Arrive & explore the neighborhood', time: '14:00', category: 'activity' }, { title: 'Visit a museum or local landmark', time: '10:00', category: 'activity' }, { title: 'Find a local market & try something new', time: '11:00', category: 'food' }],
 };
+
 export default function TripPage() {
   const { id } = useParams<{ id: string }>(); const router = useRouter();
   const store = useTripStore(); const trip = store.trips.find(t => t.id === id);
+
+  useEffect(() => {
+    // Pull the latest shared state from the cloud
+    getSharedTrip(id).then(cloudTrip => {
+      if (cloudTrip) {
+        // If it's a new shared trip we don't have, add the base trip
+        if (!store.trips.find(t => t.id === id)) {
+           store.importData({ trips: [{ id: cloudTrip.id, title: cloudTrip.title, destination: cloudTrip.destination, dates: cloudTrip.dates, startDate: cloudTrip.startDate || undefined, endDate: cloudTrip.endDate || undefined, members: cloudTrip.members, image: cloudTrip.image, currency: cloudTrip.currency || 'USD', budget: cloudTrip.budget || undefined }] });
+        }
+        
+        // If it has shared state, import the detailed itinerary, etc.
+        if (cloudTrip.sharedState && typeof cloudTrip.sharedState === 'object') {
+           store.importData(cloudTrip.sharedState as any);
+        }
+      }
+    }).catch(console.warn); // ignore if unauthorized or not found
+  }, [id]);
+
   const plans = store.itinerary.filter(i => i.tripId === id).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
   const expenses = store.expenses.filter(e => e.tripId === id);
   const packing = store.packingList.filter(p => p.tripId === id);
@@ -62,7 +84,7 @@ export default function TripPage() {
   const tabLabels = { itinerary: 'Itinerary', expenses: 'Budget & expenses', packing: 'Packing list', ideas: 'Ideas board', bookings: 'Bookings & tickets', assistant: 'AI assistant' };
   const addLabels = { itinerary: 'Add a plan', expenses: 'Add expense', packing: 'Add an item', ideas: 'Add an idea' };
   return <main className="dashboard detail-page">
-    <div className="topbar"><div className="breadcrumb"><Link href="/">Your workspace</Link><span>/</span><strong>Trip planner</strong></div><div className="topbar-actions"><button className="icon-button" onClick={() => store.updateTrip(id, { favorite: !trip.favorite })} aria-label={trip.favorite ? 'Unsave trip' : 'Save trip'} aria-pressed={!!trip.favorite}><Heart size={18} fill={trip.favorite ? 'currentColor' : 'none'}/></button><button className="icon-button" onClick={() => setModal('delete')} aria-label="Delete trip"><Trash2 size={17}/></button><TopbarUser /></div></div>
+    <div className="topbar"><div className="breadcrumb"><Link href="/">Your workspace</Link><span>/</span><strong>Trip planner</strong></div><div className="topbar-actions"><button className="icon-button" onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Share link copied to clipboard!"); }} aria-label="Share trip" title="Share with friends"><Share2 size={17} /></button><button className="icon-button" onClick={() => store.updateTrip(id, { favorite: !trip.favorite })} aria-label={trip.favorite ? 'Unsave trip' : 'Save trip'} aria-pressed={!!trip.favorite}><Heart size={18} fill={trip.favorite ? 'currentColor' : 'none'}/></button><button className="icon-button" onClick={() => setModal('delete')} aria-label="Delete trip"><Trash2 size={17}/></button><TopbarUser /></div></div>
     <section className="detail-hero" style={{ backgroundImage: `url(${trip.image})` }}><div className="detail-hero-top"><Link href="/?view=trips" className="button"><ArrowLeft size={15}/>Your adventures</Link><button className="button" onClick={() => setEditing(true)}><Pencil size={14}/>Edit trip</button></div><div className="detail-hero-copy"><span className="status-pill">{tripStatus(trip)}</span><h1>{trip.title}</h1><div className="detail-hero-meta"><span><MapPin size={14}/>{trip.destination}</span><span><CalendarDays size={14}/>{trip.dates}</span><span><Users size={14}/>{trip.members} {trip.members === 1 ? 'traveler' : 'travelers'}</span></div></div></section>
     <section className="detail-summary"><div className="summary-card"><span><Route size={15}/>Moments planned</span><h3>{String(plans.length).padStart(2,'0')} <small className="muted" style={{ fontSize: 11 }}>across {days.length} {days.length === 1 ? 'day' : 'days'}</small></h3><p>A little structure. Plenty of possibility.</p></div><div className="summary-card"><span><Wallet size={15}/>Trip spending · {currency}</span><h3>{money(total,currency)}</h3><p>{budget ? `${money(Math.abs(budget-total),currency)} ${total > budget ? 'over budget' : 'left to enjoy'}` : 'Add a budget in Edit trip'}</p>{budget > 0 && <div className={`progress-track ${total > budget ? 'over' : ''}`}><span style={{ width: Math.min(100,total / budget * 100) + '%' }}/></div>}</div><div className="summary-card"><span><Package size={15}/>Ready for takeoff</span><h3>{packed}<small className="muted" style={{ fontSize: 12 }}> / {packing.length} packed</small></h3><div className="progress-track"><span style={{ width: (packing.length ? packed / packing.length * 100 : 0) + '%' }}/></div></div></section>
     {trip.description && <p className="detail-notes">{trip.description}</p>}

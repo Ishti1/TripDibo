@@ -1,7 +1,7 @@
 import type { Booking, BudgetPlan, AssistantMessage } from '@/lib/planning-types';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { createTripOnServer, deleteTripOnServer, updateTripOnServer } from '@/app/actions/trip';
+import { createTripOnServer, deleteTripOnServer, updateTripOnServer, syncTripSharedStateOnServer } from '@/app/actions/trip';
 import toast from 'react-hot-toast';
 
 export type ItineraryItem = {
@@ -118,6 +118,22 @@ type TripStore = {
   // Activity logger
   logActivity: (activity: Omit<ActivityLog, 'id' | 'time'>) => void;
 };
+
+// Helper to push all local arrays for a specific trip up to the cloud sharedState
+function syncCloudState(tripId: string) {
+  setTimeout(() => {
+    const state = useTripStore.getState();
+    const sharedData = {
+      bookings: state.bookings.filter(b => b.tripId === tripId),
+      itinerary: state.itinerary.filter(i => i.tripId === tripId),
+      expenses: state.expenses.filter(e => e.tripId === tripId),
+      packingList: state.packingList.filter(p => p.tripId === tripId),
+      ideas: state.ideas.filter(i => i.tripId === tripId),
+      activities: state.activities.filter(a => a.tripId === tripId),
+    };
+    syncTripSharedStateOnServer(tripId, sharedData).catch(err => console.error("Failed to sync shared state:", err));
+  }, 500); // debounce slightly
+}
 
 export const useTripStore = create<TripStore>()(
   persist(
@@ -265,14 +281,18 @@ export const useTripStore = create<TripStore>()(
           };
         });
         toast.success(`Booking ${data.id ? 'updated' : 'added'}: ${data.title}`);
+        syncCloudState(data.tripId);
         return id;
       },
-      deleteBooking: (id) => set(state => ({
-        bookings: state.bookings.filter(b => b.id !== id),
-        itinerary: state.itinerary.map(i => i.bookingId === id ? { ...i, bookingId: undefined } : i),
-        // Keep recorded payments when a reservation is removed.
-        expenses: state.expenses.map(e => e.bookingId === id ? { ...e, bookingId: undefined } : e),
-      })),
+      deleteBooking: (id) => {
+        const tripId = get().bookings.find(b => b.id === id)?.tripId;
+        set(state => ({
+          bookings: state.bookings.filter(b => b.id !== id),
+          itinerary: state.itinerary.map(i => i.bookingId === id ? { ...i, bookingId: undefined } : i),
+          expenses: state.expenses.map(e => e.bookingId === id ? { ...e, bookingId: undefined } : e),
+        }));
+        if (tripId) syncCloudState(tripId);
+      },
       addAssistantMessage: (message) => {
         const id = crypto.randomUUID();
         set(state => ({ assistantMessages: [...state.assistantMessages, { ...message, id, createdAt: new Date().toISOString() }].slice(-100) }));
@@ -302,14 +322,22 @@ export const useTripStore = create<TripStore>()(
           activities: [newActivity, ...state.activities.slice(0, 19)],
         }));
         toast.success(`Added ${itemData.title} to itinerary`);
+        syncCloudState(itemData.tripId);
       },
 
-      updateItineraryItem: (id, updates) => set(state => ({ itinerary: state.itinerary.map(item => item.id === id ? { ...item, ...updates } : item) })),
+      updateItineraryItem: (id, updates) => {
+        set(state => ({ itinerary: state.itinerary.map(item => item.id === id ? { ...item, ...updates } : item) }));
+        const tripId = get().itinerary.find(i => i.id === id)?.tripId;
+        if (tripId) syncCloudState(tripId);
+      },
 
-      deleteItineraryItem: (id) =>
+      deleteItineraryItem: (id) => {
+        const tripId = get().itinerary.find(i => i.id === id)?.tripId;
         set((state) => ({
           itinerary: state.itinerary.filter((i) => i.id !== id),
-        })),
+        }));
+        if (tripId) syncCloudState(tripId);
+      },
 
       // Expense management
       addExpense: (expenseData) => {
@@ -332,13 +360,17 @@ export const useTripStore = create<TripStore>()(
           activities: [newActivity, ...state.activities.slice(0, 19)],
         }));
         toast.success(`Expense logged: ${expenseData.title}`);
+        syncCloudState(expenseData.tripId);
       },
 
-      deleteExpense: (id) =>
+      deleteExpense: (id) => {
+        const tripId = get().expenses.find(e => e.id === id)?.tripId;
         set((state) => ({
           expenses: state.expenses.filter((e) => e.id !== id),
           bookings: state.bookings.map(b => state.expenses.some(e => e.id === id && e.bookingId === b.id) ? { ...b, recordExpense: false } : b),
-        })),
+        }));
+        if (tripId) syncCloudState(tripId);
+      },
 
       // Packing management
       addPackingItem: (itemData) => {
@@ -351,19 +383,26 @@ export const useTripStore = create<TripStore>()(
         set((state) => ({
           packingList: [...state.packingList, newItem],
         }));
+        syncCloudState(itemData.tripId);
       },
 
-      togglePackingItem: (id) =>
+      togglePackingItem: (id) => {
         set((state) => ({
           packingList: state.packingList.map((item) =>
             item.id === id ? { ...item, isCompleted: !item.isCompleted } : item
           ),
-        })),
+        }));
+        const tripId = get().packingList.find(p => p.id === id)?.tripId;
+        if (tripId) syncCloudState(tripId);
+      },
 
-      deletePackingItem: (id) =>
+      deletePackingItem: (id) => {
+        const tripId = get().packingList.find(p => p.id === id)?.tripId;
         set((state) => ({
           packingList: state.packingList.filter((p) => p.id !== id),
-        })),
+        }));
+        if (tripId) syncCloudState(tripId);
+      },
 
       // Ideas management
       addIdea: (ideaData) => {
@@ -386,19 +425,26 @@ export const useTripStore = create<TripStore>()(
           ideas: [newIdea, ...state.ideas],
           activities: [newActivity, ...state.activities.slice(0, 19)],
         }));
+        syncCloudState(ideaData.tripId);
       },
 
-      voteIdea: (id) =>
+      voteIdea: (id) => {
         set((state) => ({
           ideas: state.ideas.map((item) =>
             item.id === id ? { ...item, votes: item.votes + 1 } : item
           ),
-        })),
+        }));
+        const tripId = get().ideas.find(i => i.id === id)?.tripId;
+        if (tripId) syncCloudState(tripId);
+      },
 
-      deleteIdea: (id) =>
+      deleteIdea: (id) => {
+        const tripId = get().ideas.find(i => i.id === id)?.tripId;
         set((state) => ({
           ideas: state.ideas.filter((i) => i.id !== id),
-        })),
+        }));
+        if (tripId) syncCloudState(tripId);
+      },
 
       // Activity logger
       logActivity: (activity) =>

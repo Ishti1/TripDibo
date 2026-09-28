@@ -80,6 +80,7 @@ model Trip {
   budget      Float?
   favorite    Boolean  @default(false)
   budgetPlan  Json?
+  sharedState Json?
 
   itinerary   ItineraryItem[]
   expenses    Expense[]

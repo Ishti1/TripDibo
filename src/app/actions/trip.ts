@@ -75,3 +75,20 @@ export async function deleteTripOnServer(id: string) {
   await prisma.trip.delete({ where: { id } });
   return true;
 }
+
+export async function getSharedTrip(id: string) {
+  const trip = await prisma.trip.findUnique({ where: { id } });
+  if (!trip) throw new Error("Trip not found");
+  return trip;
+}
+
+export async function syncTripSharedStateOnServer(id: string, sharedState: any) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized"); // Must be logged in to edit
+  
+  const trip = await prisma.trip.update({
+    where: { id },
+    data: { sharedState },
+  });
+  return trip;
+}
