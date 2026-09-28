@@ -79,6 +79,7 @@ model Trip {
   currency    String?  @default("USD")
   budget      Float?
   favorite    Boolean  @default(false)
+  collaborators String[] @default([])
   budgetPlan  Json?
   sharedState Json?
 

@@ -13,7 +13,12 @@ async function getUserId() {
 export async function getUserTrips() {
   const userId = await getUserId();
   const trips = await prisma.trip.findMany({
-    where: { userId },
+    where: {
+      OR: [
+        { userId },
+        { collaborators: { has: userId } }
+      ]
+    },
     orderBy: { createdAt: 'desc' },
   });
   return trips;
@@ -44,9 +49,9 @@ export async function createTripOnServer(tripData: Omit<Trip, "id"> & { id?: str
 export async function updateTripOnServer(id: string, updates: Partial<Trip>) {
   const userId = await getUserId();
   
-  // Verify ownership
+  // Verify ownership or collaboration
   const existing = await prisma.trip.findUnique({ where: { id } });
-  if (!existing || existing.userId !== userId) throw new Error("Unauthorized");
+  if (!existing || (existing.userId !== userId && !existing.collaborators.includes(userId))) throw new Error("Unauthorized");
 
   const trip = await prisma.trip.update({
     where: { id },
@@ -77,15 +82,34 @@ export async function deleteTripOnServer(id: string) {
 }
 
 export async function getSharedTrip(id: string) {
-  const trip = await prisma.trip.findUnique({ where: { id } });
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  let trip = await prisma.trip.findUnique({ where: { id } });
   if (!trip) throw new Error("Trip not found");
+
+  if (userId && trip.userId !== userId && !trip.collaborators.includes(userId)) {
+    trip = await prisma.trip.update({
+      where: { id },
+      data: {
+        collaborators: {
+          push: userId
+        }
+      }
+    });
+  }
+
   return trip;
 }
 
 export async function syncTripSharedStateOnServer(id: string, sharedState: any) {
   const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized"); // Must be logged in to edit
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("Unauthorized"); // Must be logged in to edit
   
+  const existing = await prisma.trip.findUnique({ where: { id } });
+  if (!existing || (existing.userId !== userId && !existing.collaborators.includes(userId))) throw new Error("Unauthorized");
+
   const trip = await prisma.trip.update({
     where: { id },
     data: { sharedState },
