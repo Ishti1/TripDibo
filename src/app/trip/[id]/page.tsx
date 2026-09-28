@@ -54,10 +54,10 @@ export default function TripPage() {
   const [editPlanId, setEditPlanId] = useState<string | null>(null);
   const [notice, setNotice] = useState(''); const [day, setDay] = useState('all'); const [style, setStyle] = useState('Relaxed');
   const [form, setForm] = useState({ title: '', titles: [''], date: '', time: '10:00', category: 'activity', location: '', estimatedCost: '', amount: '', person: 'You', description: '' });
-  const total = expenses.reduce((sum,e) => sum + (e.expensePer === 'person' ? e.amount : e.amount / Math.max(1, trip.members || 1)), 0);
-  const groupTotal = expenses.reduce((sum,e) => sum + (e.expensePer === 'person' ? e.amount * Math.max(1, trip.members || 1) : e.amount), 0);
   const packed = packing.filter(p => p.isCompleted).length;
   if (!trip) return <div className="not-found"><Compass size={40}/><h1>This adventure isn’t here.</h1><p className="muted">It may have been removed or saved on another device.</p><Link className="button primary" href="/">Back to your workspace <ArrowUpRight size={17}/></Link></div>;
+  const total = expenses.reduce((sum,e) => sum + (e.expensePer === 'person' ? e.amount : e.amount / Math.max(1, trip.members || 1)), 0);
+  const groupTotal = expenses.reduce((sum,e) => sum + (e.expensePer === 'person' ? e.amount * Math.max(1, trip.members || 1) : e.amount), 0);
   const currency = trip.currency || 'USD'; const budget = trip.budget || 0;
   const days = [...new Set(plans.map(p => p.date))];
   function openForm(kind: FormKind) { setEditPlanId(null); setForm({ title: '', titles: [''], date: trip?.startDate || localDate(), time: '10:00', category: 'activity', location: trip?.destination || '', estimatedCost: '', amount: '', person: 'You', description: '' }); setModal(kind); }
