@@ -211,9 +211,9 @@ function BookingHelpWidget() {
 
 function SpecialOffersWidget() {
   const partners = [
-    { name: 'GoZayaan', url: 'https://www.gozayaan.com', logo: 'https://www.google.com/s2/favicons?domain=gozayaan.com&sz=64' },
-    { name: 'Trip.com', url: 'https://www.trip.com', logo: 'https://www.google.com/s2/favicons?domain=trip.com&sz=64' },
-    { name: 'ShareTrip', url: 'https://sharetrip.net', logo: 'https://www.google.com/s2/favicons?domain=sharetrip.net&sz=64' },
+    { name: 'GoZayaan', url: 'https://www.gozayaan.com', logo: 'https://www.google.com/s2/favicons?domain=gozayaan.com&sz=256' },
+    { name: 'Trip.com', url: 'https://www.trip.com', logo: 'https://www.google.com/s2/favicons?domain=trip.com&sz=256' },
+    { name: 'ShareTrip', url: 'https://sharetrip.net', logo: 'https://www.google.com/s2/favicons?domain=sharetrip.net&sz=256' },
     { name: 'TripNest', url: '#', icon: true }
   ];
   const [index, setIndex] = useState(0);
@@ -235,38 +235,43 @@ function SpecialOffersWidget() {
         Explore different travel plans and offers across different sites.
       </p>
       
-      <div style={{ height: '48px', position: 'relative' }}>
+      <div style={{ height: '110px', position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--line)', background: '#111' }}>
          {partners.map((p, i) => (
             <a 
               key={p.name}
               href={p.url} 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="button secondary"
               style={{
                 position: 'absolute',
                 inset: 0,
-                justifyContent: 'space-between',
-                width: '100%',
+                display: 'block',
                 opacity: i === index ? 1 : 0,
-                transform: `translateY(${i === index ? '0' : '5px'})`,
-                transition: 'all 0.4s ease',
+                transition: 'opacity 0.6s ease',
                 pointerEvents: i === index ? 'auto' : 'none',
-                zIndex: i === index ? 10 : 1
+                zIndex: i === index ? 10 : 1,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {p.icon ? (
-                  <div className="brand-mark" style={{ width: '20px', height: '20px', borderRadius: '5px', transform: 'rotate(0)' }}>
-                    <Plane size={12} style={{ transform: 'rotate(-14deg)' }}/>
-                  </div>
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.logo} alt={p.name} style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '4px' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                )}
-                <strong style={{ fontSize: '11px' }}>{p.name}</strong>
+              {p.icon ? (
+                 <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: 'var(--accent)', opacity: 0.8 }}>
+                    <Plane size={110} style={{ transform: 'rotate(-14deg)', opacity: 0.2, color: '#fff' }}/>
+                 </div>
+              ) : (
+                 // eslint-disable-next-line @next/next/no-img-element
+                 <img src={p.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.5, filter: 'blur(8px) scale(1.2)' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              )}
+              
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', textShadow: '0 2px 10px rgba(0,0,0,0.8)', background: 'linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.5))' }}>
+                 {p.icon ? (
+                    <Plane size={32} style={{ marginBottom: '8px' }}/>
+                 ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.logo} alt={p.name} style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '8px', marginBottom: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.4)', background: '#fff' }} />
+                 )}
+                 <strong style={{ fontSize: '15px', fontWeight: 600, letterSpacing: '0.2px' }}>{p.name}</strong>
               </div>
-              <ExternalLink size={14} color="var(--muted)" />
+              
+              <ExternalLink size={14} color="#fff" style={{ position: 'absolute', right: '10px', top: '10px', opacity: 0.7 }} />
             </a>
          ))}
       </div>
