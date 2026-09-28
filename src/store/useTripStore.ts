@@ -2,6 +2,7 @@ import type { Booking, BudgetPlan, AssistantMessage } from '@/lib/planning-types
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { createTripOnServer, deleteTripOnServer, updateTripOnServer } from '@/app/actions/trip';
+import toast from 'react-hot-toast';
 
 export type ItineraryItem = {
   bookingId?: string;
@@ -158,7 +159,7 @@ export const useTripStore = create<TripStore>()(
 
         // Fire & Forget: Sync to Cloud
         createTripOnServer(newTrip).catch(err => console.error("Failed to sync trip to server:", err));
-
+        toast.success(`Trip created!`);
         return newId;
       },
 
@@ -190,6 +191,7 @@ export const useTripStore = create<TripStore>()(
 
         // Fire & Forget: Sync to Cloud
         deleteTripOnServer(id).catch(err => console.error("Failed to delete trip from server:", err));
+        toast.success(`Trip deleted`);
       },
 
       updateTrip: (id, updates) => {
@@ -213,6 +215,7 @@ export const useTripStore = create<TripStore>()(
 
         // Fire & Forget: Sync to Cloud
         updateTripOnServer(id, updates).catch(err => console.error("Failed to update trip on server:", err));
+        if (updates.budget !== undefined) toast.success(`Budget updated!`);
       },
 
       clearAllData: () =>
@@ -261,6 +264,7 @@ export const useTripStore = create<TripStore>()(
             activities: [newActivity, ...state.activities.slice(0, 19)],
           };
         });
+        toast.success(`Booking ${data.id ? 'updated' : 'added'}: ${data.title}`);
         return id;
       },
       deleteBooking: (id) => set(state => ({
@@ -297,6 +301,7 @@ export const useTripStore = create<TripStore>()(
           itinerary: [...state.itinerary, newItem],
           activities: [newActivity, ...state.activities.slice(0, 19)],
         }));
+        toast.success(`Added ${itemData.title} to itinerary`);
       },
 
       updateItineraryItem: (id, updates) => set(state => ({ itinerary: state.itinerary.map(item => item.id === id ? { ...item, ...updates } : item) })),
@@ -326,6 +331,7 @@ export const useTripStore = create<TripStore>()(
           expenses: [newExpense, ...state.expenses],
           activities: [newActivity, ...state.activities.slice(0, 19)],
         }));
+        toast.success(`Expense logged: ${expenseData.title}`);
       },
 
       deleteExpense: (id) =>

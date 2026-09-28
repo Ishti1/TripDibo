@@ -3,6 +3,7 @@ import { SessionProvider } from "next-auth/react";
 import { createContext, useContext, useEffect, useState } from 'react';
 import Header from './Header';
 import { useTripStore } from '@/store/useTripStore';
+import { Toaster } from 'react-hot-toast';
 
 const ThemeContext = createContext({ darkMode: false, toggleDarkMode: () => {} });
 export const useTheme = () => useContext(ThemeContext);
@@ -31,6 +32,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <ThemeContext.Provider value={{ darkMode, toggleDarkMode }}>
+        <Toaster position="bottom-right" toastOptions={{ style: { background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' } }} />
         <Header toggleDarkMode={toggleDarkMode} />
         <div className="app-content">
           {mounted ? children : <div className="loading-state">Preparing your next adventure…</div>}
