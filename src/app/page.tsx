@@ -2,7 +2,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowUpRight, ArrowRight, Plus, Search, LayoutGrid, List, Heart, MapPin, CalendarDays, Plane, Compass, CheckCheck, Download, SlidersHorizontal, Sparkles, Route, Pencil, X, Users, Hotel, TrainFront, ExternalLink } from 'lucide-react';
+import { ArrowUpRight, ArrowRight, Plus, Search, LayoutGrid, List, Heart, MapPin, CalendarDays, Plane, Compass, CheckCheck, Download, SlidersHorizontal, Sparkles, Route, Pencil, X, Users, Hotel, TrainFront, ExternalLink, Tag } from 'lucide-react';
 import { Trip, useTripStore } from '@/store/useTripStore';
 import TripForm from '@/components/TripForm';
 import Modal from '@/components/Modal';
@@ -104,7 +104,7 @@ function Dashboard() {
       </section>}
       {(view === 'overview' || view === 'explore') && <section className="inspiration-section"><div className="section-heading"><div><span className="eyebrow">A LITTLE WANDERLUST</span><h2>Need a spark of inspiration?</h2></div>{view !== 'explore' && <Link className="text-link" href="/?view=explore">Explore all <ArrowRight size={15}/></Link>}</div><div className="inspiration-grid">{inspirations.map(item => <button key={item.destination} className="inspiration-card" onClick={() => handlePlanTrip({ initial: { title: item.title, destination: item.destination, image: covers[item.cover].url } })}><div className="inspiration-image" style={{ backgroundImage: `url(${covers[item.cover].url})` }}><span>{item.style}</span><span className="inspiration-arrow"><ArrowUpRight size={19}/></span></div><span className="inspiration-tag">{item.tag}</span><h3>{item.title}</h3><p>{item.destination} <span>· {item.days}-day inspiration</span></p></button>)}</div><p className="muted micro">Destination inspiration with illustrative cover photography. Make every detail your own.</p></section>}
     </div>
-    {view === 'overview' && <aside className="right-column"><section className="next-card"><div className="section-heading"><h3>On the horizon</h3><Plane size={18}/></div>{nextTrip ? <><span className="eyebrow">YOUR NEXT DEPARTURE</span><h2>{nextTrip.destination}</h2><p>{dateLabel(nextTrip.startDate)}</p><Link className="button secondary" href={`/trip/${nextTrip.id}`}>Pick up your plans <ArrowUpRight size={16}/></Link></> : <><div className="horizon-illustration"><span/><Plane size={27}/></div><h3>Something to look forward to.</h3><p>Add dates to a trip and your next getaway will appear right here.</p><button className="text-link" onClick={() => handlePlanTrip()}>Put it on the calendar <ArrowRight size={15}/></button></>}</section><BookingHelpWidget /><section className="activity-card"><div className="section-heading"><h3>The latest chapter</h3><span className="activity-dot"/></div>{activities.length ? activities.slice(0,3).map(a => <div className="activity-item" key={a.id}><span className="activity-line-dot"/><div><p><strong>{a.user}</strong> {a.action} <strong>{a.target}</strong></p><small>{a.time}</small></div></div>) : <p className="activity-empty">Your travel story is waiting to be written. New plans and updates will appear here.</p>}</section></aside>}
+    {view === 'overview' && <aside className="right-column"><section className="next-card"><div className="section-heading"><h3>On the horizon</h3><Plane size={18}/></div>{nextTrip ? <><span className="eyebrow">YOUR NEXT DEPARTURE</span><h2>{nextTrip.destination}</h2><p>{dateLabel(nextTrip.startDate)}</p><Link className="button secondary" href={`/trip/${nextTrip.id}`}>Pick up your plans <ArrowUpRight size={16}/></Link></> : <><div className="horizon-illustration"><span/><Plane size={27}/></div><h3>Something to look forward to.</h3><p>Add dates to a trip and your next getaway will appear right here.</p><button className="text-link" onClick={() => handlePlanTrip()}>Put it on the calendar <ArrowRight size={15}/></button></>}</section><BookingHelpWidget /><section className="activity-card"><div className="section-heading"><h3>The latest chapter</h3><span className="activity-dot"/></div>{activities.length ? activities.slice(0,3).map(a => <div className="activity-item" key={a.id}><span className="activity-line-dot"/><div><p><strong>{a.user}</strong> {a.action} <strong>{a.target}</strong></p><small>{a.time}</small></div></div>) : <p className="activity-empty">Your travel story is waiting to be written. New plans and updates will appear here.</p>}</section><SpecialOffersWidget /></aside>}
     </div><footer className="dashboard-footer"><span>Made for the journey, not just the destination.</span><span>tripdibo <Compass size={13}/></span></footer>
     {modal && <TripForm trip={modal.trip} initial={modal.initial} onClose={() => setModal(null)}/>}
     {actionModal === 'choice' && (
@@ -207,4 +207,26 @@ function BookingHelpWidget() {
       <div className="modal-footer"><button className="button secondary" onClick={() => setHelpModal(false)}>Close</button></div>
     </Modal>}
   </>;
+}
+
+function SpecialOffersWidget() {
+  return (
+    <section className="next-card" style={{ padding: '20px' }}>
+      <div className="section-heading" style={{ marginBottom: '15px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 500, letterSpacing: '-0.3px' }}>Special offers</h3>
+        <Tag size={18} color="var(--muted)" />
+      </div>
+      <p style={{ fontSize: '10px', lineHeight: 1.9, color: 'var(--muted)', margin: '0 0 16px' }}>
+        Explore special travel deals and discounts across the world from our partners.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <a href="https://www.gozayaan.com" target="_blank" rel="noopener noreferrer" className="button secondary" style={{ justifyContent: 'space-between', width: '100%', padding: '12px 16px' }}>
+          GoZayaan <ExternalLink size={14}/>
+        </a>
+        <a href="https://www.trip.com" target="_blank" rel="noopener noreferrer" className="button secondary" style={{ justifyContent: 'space-between', width: '100%', padding: '12px 16px' }}>
+          Trip.com <ExternalLink size={14}/>
+        </a>
+      </div>
+    </section>
+  );
 }
