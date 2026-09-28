@@ -2,7 +2,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowUpRight, ArrowRight, Plus, Search, LayoutGrid, List, Heart, MapPin, CalendarDays, Plane, Compass, CheckCheck, Download, SlidersHorizontal, Sparkles, Route, Pencil, X, Users } from 'lucide-react';
+import { ArrowUpRight, ArrowRight, Plus, Search, LayoutGrid, List, Heart, MapPin, CalendarDays, Plane, Compass, CheckCheck, Download, SlidersHorizontal, Sparkles, Route, Pencil, X, Users, Hotel, TrainFront, ExternalLink } from 'lucide-react';
 import { Trip, useTripStore } from '@/store/useTripStore';
 import TripForm from '@/components/TripForm';
 import Modal from '@/components/Modal';
@@ -104,7 +104,7 @@ function Dashboard() {
       </section>}
       {(view === 'overview' || view === 'explore') && <section className="inspiration-section"><div className="section-heading"><div><span className="eyebrow">A LITTLE WANDERLUST</span><h2>Need a spark of inspiration?</h2></div>{view !== 'explore' && <Link className="text-link" href="/?view=explore">Explore all <ArrowRight size={15}/></Link>}</div><div className="inspiration-grid">{inspirations.map(item => <button key={item.destination} className="inspiration-card" onClick={() => handlePlanTrip({ initial: { title: item.title, destination: item.destination, image: covers[item.cover].url } })}><div className="inspiration-image" style={{ backgroundImage: `url(${covers[item.cover].url})` }}><span>{item.style}</span><span className="inspiration-arrow"><ArrowUpRight size={19}/></span></div><span className="inspiration-tag">{item.tag}</span><h3>{item.title}</h3><p>{item.destination} <span>· {item.days}-day inspiration</span></p></button>)}</div><p className="muted micro">Destination inspiration with illustrative cover photography. Make every detail your own.</p></section>}
     </div>
-    {view === 'overview' && <aside className="right-column"><section className="next-card"><div className="section-heading"><h3>On the horizon</h3><Plane size={18}/></div>{nextTrip ? <><span className="eyebrow">YOUR NEXT DEPARTURE</span><h2>{nextTrip.destination}</h2><p>{dateLabel(nextTrip.startDate)}</p><Link className="button secondary" href={`/trip/${nextTrip.id}`}>Pick up your plans <ArrowUpRight size={16}/></Link></> : <><div className="horizon-illustration"><span/><Plane size={27}/></div><h3>Something to look forward to.</h3><p>Add dates to a trip and your next getaway will appear right here.</p><button className="text-link" onClick={() => handlePlanTrip()}>Put it on the calendar <ArrowRight size={15}/></button></>}</section><section className="starter-card"><span className="starter-icon"><Sparkles size={21}/></span><span className="eyebrow">A HEAD START HELPS</span><h3>Less blank page.<br/>More possibility.</h3><p>Build your trip with ready-to-use itinerary and packing starters.</p><button onClick={() => handlePlanTrip()}>Start your adventure <ArrowUpRight size={17}/></button><span className="starter-decoration">✳</span></section><section className="activity-card"><div className="section-heading"><h3>The latest chapter</h3><span className="activity-dot"/></div>{activities.length ? activities.slice(0,3).map(a => <div className="activity-item" key={a.id}><span className="activity-line-dot"/><div><p><strong>{a.user}</strong> {a.action} <strong>{a.target}</strong></p><small>{a.time}</small></div></div>) : <p className="activity-empty">Your travel story is waiting to be written. New plans and updates will appear here.</p>}</section></aside>}
+    {view === 'overview' && <aside className="right-column"><section className="next-card"><div className="section-heading"><h3>On the horizon</h3><Plane size={18}/></div>{nextTrip ? <><span className="eyebrow">YOUR NEXT DEPARTURE</span><h2>{nextTrip.destination}</h2><p>{dateLabel(nextTrip.startDate)}</p><Link className="button secondary" href={`/trip/${nextTrip.id}`}>Pick up your plans <ArrowUpRight size={16}/></Link></> : <><div className="horizon-illustration"><span/><Plane size={27}/></div><h3>Something to look forward to.</h3><p>Add dates to a trip and your next getaway will appear right here.</p><button className="text-link" onClick={() => handlePlanTrip()}>Put it on the calendar <ArrowRight size={15}/></button></>}</section><section className="starter-card"><span className="starter-icon"><Sparkles size={21}/></span><span className="eyebrow">A HEAD START HELPS</span><h3>Less blank page.<br/>More possibility.</h3><p>Build your trip with ready-to-use itinerary and packing starters.</p><button onClick={() => handlePlanTrip()}>Start your adventure <ArrowUpRight size={17}/></button><span className="starter-decoration">✳</span></section><section className="activity-card"><div className="section-heading"><h3>The latest chapter</h3><span className="activity-dot"/></div>{activities.length ? activities.slice(0,3).map(a => <div className="activity-item" key={a.id}><span className="activity-line-dot"/><div><p><strong>{a.user}</strong> {a.action} <strong>{a.target}</strong></p><small>{a.time}</small></div></div>) : <p className="activity-empty">Your travel story is waiting to be written. New plans and updates will appear here.</p></section><BookingHelpWidget /></aside>}
     </div><footer className="dashboard-footer"><span>Made for the journey, not just the destination.</span><span>tripdibo <Compass size={13}/></span></footer>
     {modal && <TripForm trip={modal.trip} initial={modal.initial} onClose={() => setModal(null)}/>}
     {actionModal === 'choice' && (
@@ -145,4 +145,66 @@ function Dashboard() {
     )}
     {notice && <div className="toast" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification"><X size={15}/></button></div>}
   </main>;
+}
+
+function BookingHelpWidget() {
+  const [helpModal, setHelpModal] = useState(false);
+  const helpImages = [
+    'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&w=400&q=80', // Flight
+    'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80', // Hotel
+    'https://images.unsplash.com/photo-1474487548417-781cb71495f3?auto=format&fit=crop&w=400&q=80' // Train
+  ];
+  const [imgIndex, setImgIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setImgIndex(prev => (prev + 1) % helpImages.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [helpImages.length]);
+
+  return <>
+    <section className="booking-help-widget" onClick={() => setHelpModal(true)} style={{ marginTop: '20px', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', position: 'relative', border: '1px solid var(--line)', background: 'var(--canvas)', transition: 'transform 0.2s', transform: 'translateY(0)' }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+      <div style={{ position: 'relative', height: '140px' }}>
+        {helpImages.map((src, idx) => (
+          <div key={src} style={{ position: 'absolute', inset: 0, backgroundImage: `url(${src})`, backgroundSize: 'cover', backgroundPosition: 'center', opacity: imgIndex === idx ? 1 : 0, transition: 'opacity 1.5s ease-in-out' }} />
+        ))}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 80%)' }} />
+      </div>
+      <div style={{ padding: '16px', position: 'absolute', bottom: 0, left: 0, right: 0, color: 'white' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 500, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '6px' }}>Need help with bookings? <ExternalLink size={14}/></h3>
+        <p style={{ fontSize: '12px', opacity: 0.9, margin: 0, textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>Find flights, stays, and transport.</p>
+      </div>
+    </section>
+
+    {helpModal && <Modal title="Need help with bookings?" subtitle="Find the best flights, stays, and transport for your trip." onClose={() => setHelpModal(false)}>
+      <div className="booking-sites" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="site-group">
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}><Plane size={15}/> Flights</h4>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <a href="https://www.google.com/flights" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Google Flights</a>
+            <a href="https://www.skyscanner.net/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Skyscanner</a>
+            <a href="https://www.kayak.com/flights" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Kayak</a>
+          </div>
+        </div>
+        <div className="site-group">
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}><Hotel size={15}/> Hotels & Stays</h4>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <a href="https://www.booking.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Booking.com</a>
+            <a href="https://www.airbnb.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Airbnb</a>
+            <a href="https://www.agoda.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Agoda</a>
+          </div>
+        </div>
+        <div className="site-group">
+          <h4 style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}><TrainFront size={15}/> Trains & Buses</h4>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <a href="https://www.rome2rio.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Rome2rio</a>
+            <a href="https://www.thetrainline.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Trainline</a>
+            <a href="https://www.omio.com/" target="_blank" rel="noreferrer" className="button secondary" style={{ flex: '1 1 auto', justifyContent: 'center' }}>Omio</a>
+          </div>
+        </div>
+      </div>
+      <div className="modal-footer"><button className="button secondary" onClick={() => setHelpModal(false)}>Close</button></div>
+    </Modal>}
+  </>;
 }
