@@ -210,6 +210,21 @@ function BookingHelpWidget() {
 }
 
 function SpecialOffersWidget() {
+  const partners = [
+    { name: 'GoZayaan', url: 'https://www.gozayaan.com', logo: 'https://logo.clearbit.com/gozayaan.com' },
+    { name: 'Trip.com', url: 'https://www.trip.com', logo: 'https://logo.clearbit.com/trip.com' },
+    { name: 'ShareTrip', url: 'https://sharetrip.net', logo: 'https://logo.clearbit.com/sharetrip.net' },
+    { name: 'TripNest', url: '#', icon: true }
+  ];
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIndex((prev) => (prev + 1) % partners.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <section className="next-card" style={{ padding: '20px' }}>
       <div className="section-heading" style={{ marginBottom: '15px' }}>
@@ -219,13 +234,41 @@ function SpecialOffersWidget() {
       <p style={{ fontSize: '10px', lineHeight: 1.9, color: 'var(--muted)', margin: '0 0 16px' }}>
         Explore special travel deals and discounts across the world from our partners.
       </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <a href="https://www.gozayaan.com" target="_blank" rel="noopener noreferrer" className="button secondary" style={{ justifyContent: 'space-between', width: '100%', padding: '12px 16px' }}>
-          GoZayaan <ExternalLink size={14}/>
-        </a>
-        <a href="https://www.trip.com" target="_blank" rel="noopener noreferrer" className="button secondary" style={{ justifyContent: 'space-between', width: '100%', padding: '12px 16px' }}>
-          Trip.com <ExternalLink size={14}/>
-        </a>
+      
+      <div style={{ height: '48px', position: 'relative' }}>
+         {partners.map((p, i) => (
+            <a 
+              key={p.name}
+              href={p.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="button secondary"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                justifyContent: 'space-between',
+                width: '100%',
+                opacity: i === index ? 1 : 0,
+                transform: `translateY(${i === index ? '0' : '5px'})`,
+                transition: 'all 0.4s ease',
+                pointerEvents: i === index ? 'auto' : 'none',
+                zIndex: i === index ? 10 : 1
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {p.icon ? (
+                  <div className="brand-mark" style={{ width: '20px', height: '20px', borderRadius: '5px', transform: 'rotate(0)' }}>
+                    <Plane size={12} style={{ transform: 'rotate(-14deg)' }}/>
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.logo} alt={p.name} style={{ width: '20px', height: '20px', objectFit: 'contain', borderRadius: '4px' }} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                )}
+                <strong style={{ fontSize: '11px' }}>{p.name}</strong>
+              </div>
+              <ExternalLink size={14} color="var(--muted)" />
+            </a>
+         ))}
       </div>
     </section>
   );
