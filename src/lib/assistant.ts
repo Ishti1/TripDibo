@@ -23,16 +23,16 @@ export function planningContext(input: unknown) {
   };
 }
 export type PlanningContext = ReturnType<typeof planningContext>;
-const stringSchema = {type:'string'};
-const planProperties = { title:stringSchema,date:stringSchema,time:stringSchema,category:{type:'string',enum:['activity','food','transport','hotel']},location:stringSchema,estimatedCost:{type:'number',minimum:0},notes:stringSchema };
+const stringSchema = {type:'STRING'};
+const planProperties = { title:stringSchema,date:stringSchema,time:stringSchema,category:{type:'STRING',enum:['activity','food','transport','hotel']},location:stringSchema,estimatedCost:{type:'NUMBER'},notes:stringSchema };
 export const proposalSchema = {
-  type:'object', additionalProperties:false,
+  type:'OBJECT',
   properties:{
     answer:stringSchema,
-    itinerary:{type:'array',maxItems:24,items:{type:'object',additionalProperties:false,properties:planProperties,required:Object.keys(planProperties)}},
-    budget:{anyOf:[{type:'null'},{type:'object',additionalProperties:false,properties:{currency:stringSchema,categories:{type:'array',maxItems:12,items:{type:'object',additionalProperties:false,properties:{name:stringSchema,amount:{type:'number',minimum:0},reason:stringSchema},required:['name','amount','reason']}},assumptions:{type:'array',maxItems:8,items:stringSchema}},required:['currency','categories','assumptions']}]},
-    packing:{type:'array',maxItems:20,items:stringSchema},
-    warnings:{type:'array',maxItems:8,items:stringSchema},
+    itinerary:{type:'ARRAY',items:{type:'OBJECT',properties:planProperties,required:Object.keys(planProperties)}},
+    budget:{type:'OBJECT',nullable:true,properties:{currency:stringSchema,categories:{type:'ARRAY',items:{type:'OBJECT',properties:{name:stringSchema,amount:{type:'NUMBER'},reason:stringSchema},required:['name','amount','reason']}},assumptions:{type:'ARRAY',items:stringSchema}},required:['currency','categories','assumptions']},
+    packing:{type:'ARRAY',items:stringSchema},
+    warnings:{type:'ARRAY',items:stringSchema},
   }, required:['answer','itinerary','budget','packing','warnings'],
 };
 export function validateProposal(input: unknown, context: PlanningContext): AssistantProposal {
