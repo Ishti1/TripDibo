@@ -13,6 +13,7 @@ import Modal from '@/components/Modal';
 import TripForm from '@/components/TripForm';
 import { dateLabel, downloadFile, localDate, money, tripStatus } from '@/lib/travel';
 import { getSharedTrip } from '@/app/actions/trip';
+import { useSession } from 'next-auth/react';
 
 type Tab = 'itinerary' | 'expenses' | 'packing' | 'ideas' | 'bookings' | 'assistant';
 type FormKind = Exclude<Tab,'bookings'|'assistant'> | 'starter' | 'delete' | null;
@@ -26,6 +27,8 @@ const starterActivities: Record<string, { title: string; time: string; category:
 export default function TripPage() {
   const { id } = useParams<{ id: string }>(); const router = useRouter();
   const store = useTripStore(); const trip = store.trips.find(t => t.id === id);
+  const { data: session } = useSession();
+  const userId = session?.user?.email || 'guest';
 
   useEffect(() => {
     // Pull the latest shared state from the cloud
@@ -45,11 +48,37 @@ export default function TripPage() {
   }, [id]);
 
   const plans = store.itinerary.filter(i => i.tripId === id).sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
-  const expenses = store.expenses.filter(e => e.tripId === id);
-  const packing = store.packingList.filter(p => p.tripId === id);
+  const allExpenses = store.expenses.filter(e => e.tripId === id);
+  const allPacking = store.packingList.filter(p => p.tripId === id);
   const ideas = store.ideas.filter(i => i.tripId === id);
-  const bookings = store.bookings.filter(b => b.tripId === id);
+  const allBookings = store.bookings.filter(b => b.tripId === id);
+  
   const [tab, setTab] = useState<Tab>('itinerary'); const [modal, setModal] = useState<FormKind>(null); const [editing, setEditing] = useState(false);
+  const [subTab, setSubTab] = useState<string>('common');
+  
+  const expenses = allExpenses.filter(e => (e.ownerId || 'common') === subTab);
+  const packing = allPacking.filter(p => (p.ownerId || 'common') === subTab);
+  const bookings = allBookings.filter(b => (b.ownerId || 'common') === subTab);
+
+  const getSubTabs = () => {
+    let items: { ownerId?: string }[] = [];
+    if (tab === 'packing') items = allPacking;
+    else if (tab === 'expenses') items = allExpenses;
+    else if (tab === 'bookings') items = allBookings;
+    else return [];
+    
+    const owners = new Set(items.map(i => i.ownerId || 'common'));
+    owners.delete('common');
+    const tabs = ['common'];
+    if (userId !== 'guest') {
+       tabs.push(userId);
+       owners.delete(userId);
+    }
+    return [...tabs, ...Array.from(owners)];
+  };
+  const activeSubTabs = getSubTabs();
+  const canEdit = subTab === 'common' || subTab === userId;
+
   const [expensePer, setExpensePer] = useState<'group'|'person'>('group');
   const [editPlanId, setEditPlanId] = useState<string | null>(null);
   const [notice, setNotice] = useState(''); const [day, setDay] = useState('all'); const [style, setStyle] = useState('Relaxed');
@@ -66,14 +95,28 @@ export default function TripPage() {
     if (modal === 'packing') {
       const validTitles = form.titles.map(i => i.trim()).filter(Boolean);
       if (!validTitles.length) return;
-      validTitles.forEach(t => store.addPackingItem({ tripId: id, title: t, assignedTo: form.person.trim() || 'You' }));
+      validTitles.forEach(t => store.addPackingItem({ tripId: id, title: t, assignedTo: form.person.trim() || 'You', ownerId: subTab === 'common' ? 'common' : subTab }));
     } else {
       if (!form.title.trim()) return;
       if (modal === 'itinerary') { const data = { tripId: id, title: form.title.trim(), date: form.date, time: form.time, category: form.category as ItineraryItem['category'], location: form.location.trim(), estimatedCost: form.estimatedCost.trim() || 'Not estimated' }; if (editPlanId) store.updateItineraryItem(editPlanId, data); else store.addItineraryItem(data); }
-      if (modal === 'expenses') { let amount = Number(form.amount); if (!Number.isFinite(amount) || amount <= 0) return; store.addExpense({ tripId: id, title: form.title.trim(), amount, paidBy: form.person.trim() || 'You', date: form.date, expensePer }); }
+      if (modal === 'expenses') { let amount = Number(form.amount); if (!Number.isFinite(amount) || amount <= 0) return; store.addExpense({ tripId: id, title: form.title.trim(), amount, paidBy: form.person.trim() || 'You', date: form.date, expensePer, ownerId: subTab === 'common' ? 'common' : subTab }); }
       if (modal === 'ideas') store.addIdea({ tripId: id, title: form.title.trim(), description: form.description.trim(), author: form.person.trim() || 'You' });
     }
     setModal(null); setNotice('Added to your adventure.');
+  }
+
+  function cloneFromCommon() {
+    if (tab === 'packing') {
+      const commonItems = allPacking.filter(p => (p.ownerId || 'common') === 'common');
+      commonItems.forEach(p => store.addPackingItem({ tripId: id, title: p.title, assignedTo: p.assignedTo, category: p.category, ownerId: userId }));
+      toast.success("Copied common packing list to your tab!");
+    } else if (tab === 'expenses') {
+      const commonItems = allExpenses.filter(e => (e.ownerId || 'common') === 'common');
+      commonItems.forEach(e => store.addExpense({ tripId: id, title: e.title, amount: e.amount, paidBy: e.paidBy, category: e.category, date: e.date, expensePer: e.expensePer, ownerId: userId }));
+      toast.success("Copied common expenses to your tab!");
+    } else if (tab === 'bookings') {
+      toast.error("Cloning bookings is not supported yet.");
+    }
   }
   function addStarter() {
     if (!trip) return;
@@ -96,13 +139,22 @@ export default function TripPage() {
     <section className="detail-hero" style={{ backgroundImage: `url(${trip.image})` }}><div className="detail-hero-top"><Link href="/?view=trips" className="button"><ArrowLeft size={15}/>Your adventures</Link><button className="button" onClick={() => setEditing(true)}><Pencil size={14}/>Edit trip</button></div><div className="detail-hero-copy"><span className="status-pill">{tripStatus(trip)}</span><h1>{trip.title}</h1><div className="detail-hero-meta"><span><MapPin size={14}/>{trip.destination}</span><span><CalendarDays size={14}/>{trip.dates}</span><span><Users size={14}/>{trip.members} {trip.members === 1 ? 'traveler' : 'travelers'}</span></div></div></section>
     <section className="detail-summary"><div className="summary-card"><span><Route size={15}/>Moments planned</span><h3>{String(plans.length).padStart(2,'0')} <small className="muted" style={{ fontSize: 11 }}>across {days.length} {days.length === 1 ? 'day' : 'days'}</small></h3><p>A little structure. Plenty of possibility.</p></div><div className="summary-card"><span><Wallet size={15}/>Trip spending · {currency}</span><h3>{money(total,currency)}</h3><p>{budget ? `${money(Math.abs(budget-total),currency)} ${total > budget ? 'over budget' : 'left to enjoy'}` : 'Add a budget in Edit trip'}</p>{budget > 0 && <div className={`progress-track ${total > budget ? 'over' : ''}`}><span style={{ width: Math.min(100,total / budget * 100) + '%' }}/></div>}</div><div className="summary-card"><span><Package size={15}/>Ready for takeoff</span><h3>{packed}<small className="muted" style={{ fontSize: 12 }}> / {packing.length} packed</small></h3><div className="progress-track"><span style={{ width: (packing.length ? packed / packing.length * 100 : 0) + '%' }}/></div></div></section>
     {trip.description && <p className="detail-notes">{trip.description}</p>}
-    <nav className="detail-tabs" aria-label="Trip sections">{(['itinerary','bookings','expenses','packing','ideas','assistant'] as Tab[]).map(t => { const Icon = icons[t]; return <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)} aria-current={tab === t ? 'page' : undefined}><Icon size={17}/>{tabLabels[t]}{t !== "assistant" && <span className="count-badge">{counts[t]}</span>}</button>; })}</nav>
-    {tab === "bookings" && <BookingsPanel trip={trip}/>}
+    <nav className="detail-tabs" aria-label="Trip sections">{(['itinerary','bookings','expenses','packing','ideas','assistant'] as Tab[]).map(t => { const Icon = icons[t]; return <button key={t} className={tab === t ? 'active' : ''} onClick={() => { setTab(t); setSubTab('common'); }} aria-current={tab === t ? 'page' : undefined}><Icon size={17}/>{tabLabels[t]}{t !== "assistant" && <span className="count-badge">{counts[t]}</span>}</button>; })}</nav>
+    {(tab === 'packing' || tab === 'expenses' || tab === 'bookings') && activeSubTabs.length > 0 && (
+      <div className="filter-tabs" style={{ padding: '0 22px', marginTop: '16px', overflow: 'auto', borderBottom: '1px solid var(--line)' }}>
+        {activeSubTabs.map(t => (
+          <button key={t} className={subTab === t ? 'active' : ''} onClick={() => setSubTab(t)}>
+            {t === 'common' ? 'Common Trip' : t === userId ? 'My Personal Tab' : t.split('@')[0] + "'s Tab"}
+          </button>
+        ))}
+      </div>
+    )}
+    {tab === "bookings" && <BookingsPanel trip={trip} subTab={subTab} canEdit={canEdit}/>}
     {tab === "assistant" && <AssistantPanel trip={trip}/>}
-    {(tab !== "bookings" && tab !== "assistant") && <section className="detail-content"><div className="section-heading"><div><h2>{tabLabels[tab]}</h2><p>{tab === 'itinerary' ? 'The best days have a little room for the unexpected.' : tab === 'expenses' ? 'Keep the numbers simple. Focus on the memories.' : tab === 'packing' ? 'A little preparation goes a long way.' : 'Keep your maybes, must-dos, and brilliant little ideas here.'}</p></div><div className="detail-actions">{(tab === 'itinerary' || tab === 'packing') && <button className="button secondary" onClick={() => setModal('starter')}><Sparkles size={15}/>Trip starter</button>}<button className="button primary" onClick={() => openForm(tab)}><Plus size={16}/>{addLabels[tab]}</button></div></div>
+    {(tab !== "bookings" && tab !== "assistant") && <section className="detail-content"><div className="section-heading"><div><h2>{tabLabels[tab]}</h2><p>{tab === 'itinerary' ? 'The best days have a little room for the unexpected.' : tab === 'expenses' ? 'Keep the numbers simple. Focus on the memories.' : tab === 'packing' ? 'A little preparation goes a long way.' : 'Keep your maybes, must-dos, and brilliant little ideas here.'}</p></div><div className="detail-actions">{(tab === 'itinerary' || tab === 'packing') && canEdit && <button className="button secondary" onClick={() => setModal('starter')}><Sparkles size={15}/>Trip starter</button>}{(tab === 'itinerary' || tab === 'ideas' || canEdit) && <button className="button primary" onClick={() => openForm(tab)}><Plus size={16}/>{addLabels[tab]}</button>}{tab !== 'itinerary' && tab !== 'ideas' && canEdit && subTab === userId && (tab === 'packing' ? packing.length === 0 : expenses.length === 0) && <button className="button secondary" onClick={cloneFromCommon}>Copy from Common</button>}</div></div>
     {tab === 'itinerary' && <>{days.length > 1 && <div className="filter-tabs"><button className={day === 'all' ? 'active' : ''} onClick={() => setDay('all')}>All days</button>{days.map(d => <button key={d} className={day === d ? 'active' : ''} onClick={() => setDay(d)}>{/^\d{4}-\d{2}-\d{2}$/.test(d) ? dateLabel(d) : d}</button>)}</div>}{plans.length ? days.filter(d => day === 'all' || day === d).map(d => <div key={d}><div className="timeline-day"><CalendarDays size={16}/>{/^\d{4}-\d{2}-\d{2}$/.test(d) ? dateLabel(d) : d}</div>{plans.filter(p => p.date === d).map(p => { const Icon = categoryIcons[p.category] || Compass; return <article className="plan-row" key={p.id}><span className="plan-time">{p.time}</span><span className="plan-icon"><Icon size={19}/></span><div className="plan-info"><h3>{p.title}</h3><p><MapPin size={12}/>{p.location || trip.destination}</p></div><span className="plan-cost">{p.estimatedCost}</span><button className="icon-button" aria-label={`Edit plan ${p.title}`} onClick={() => { setEditPlanId(p.id); setForm({ title: p.title, titles: [''], date: /^\d{4}-\d{2}-\d{2}$/.test(p.date) ? p.date : trip.startDate || localDate(), time: /^\d{2}:\d{2}$/.test(p.time) ? p.time : "10:00", category: p.category, location: p.location, estimatedCost: p.estimatedCost, amount: "", person: "You", description: "" }); setModal("itinerary"); }}><Pencil size={14}/></button><button className="icon-button" aria-label={`Remove ${p.title}`} onClick={() => { store.deleteItineraryItem(p.id); setDay('all'); }}><Trash2 size={14}/></button></article>; })}</div>) : <Empty icon={<Route/>} title="Make room for memorable days." text="Add your own plans, or use a trip starter for an itinerary and packing checklist you can make your own."/>}</>}
-    {tab === 'expenses' && <>{trip.budgetPlan && trip.budgetPlan.currency === currency && <div className="saved-budget"><div className="section-heading"><h3>Your budget plan</h3><span className="privacy-chip">AI draft · saved by you</span></div>{trip.budgetPlan.categories.map((c,i)=><div className="proposed-budget" key={i}><div><strong>{c.name}</strong><p>{c.reason}</p></div><strong>{money(c.amount,currency)}</strong></div>)}</div>}<div className="detail-summary"><div className="summary-card"><span>Total spent (My share)</span><h3>{money(total,currency)}</h3></div><div className="summary-card"><span>Total group spending</span><h3>{money(groupTotal,currency)}</h3><p>Combined spending for all {trip.members} travelers.</p></div><div className="summary-card"><span>My trip budget</span><h3>{budget ? money(budget,currency) : 'Not set'}</h3><button className="text-link" onClick={() => setEditing(true)}>Adjust budget <Pencil size={11}/></button></div></div>{expenses.length ? <div className="expense-list">{expenses.map(e => <article className="expense-row" key={e.id}><span className="plan-icon"><Wallet size={18}/></span><div className="plan-info"><h3>{e.title}</h3><p>Paid by {e.paidBy} · {e.date} · {e.expensePer === 'person' ? 'Individual' : 'Group'}</p></div><span className="expense-value">{money(e.amount,currency)}</span><button className="icon-button" onClick={() => store.deleteExpense(e.id)} aria-label={`Delete expense ${e.title}`}><Trash2 size={14}/></button></article>)}</div> : <Empty icon={<Wallet/>} title="Good times, clear numbers." text="Add flights, stays, meals, and everything in between. Your total and individual share update automatically."/>}<p className="muted micro">Amounts are recorded in {currency}. Changing your trip currency changes the label; it does not convert previous amounts.</p></>}
-    {tab === 'packing' && <>{packing.length ? <>{packing.map(item => <article className="packing-row" key={item.id}><button className={`packing-check ${item.isCompleted ? 'checked' : ''}`} role="checkbox" aria-checked={item.isCompleted} aria-label={`Packed: ${item.title}`} onClick={() => store.togglePackingItem(item.id)}>{item.isCompleted && <Check size={16}/>}</button><div className={`plan-info ${item.isCompleted ? 'completed' : ''}`}><h3>{item.title}</h3><p>{item.assignedTo}</p></div><button className="icon-button" onClick={() => store.deletePackingItem(item.id)} aria-label={`Remove ${item.title}`}><Trash2 size={14}/></button></article>)}</> : <Empty icon={<Package/>} title="Pack light. Feel ready." text="Create your checklist, assign items to travelers, and check things off as you go."/>}</>}
+    {tab === 'expenses' && <>{trip.budgetPlan && trip.budgetPlan.currency === currency && subTab === 'common' && <div className="saved-budget"><div className="section-heading"><h3>Your budget plan</h3><span className="privacy-chip">AI draft · saved by you</span></div>{trip.budgetPlan.categories.map((c,i)=><div className="proposed-budget" key={i}><div><strong>{c.name}</strong><p>{c.reason}</p></div><strong>{money(c.amount,currency)}</strong></div>)}</div>}<div className="detail-summary"><div className="summary-card"><span>Total spent (My share)</span><h3>{money(total,currency)}</h3></div><div className="summary-card"><span>Total group spending</span><h3>{money(groupTotal,currency)}</h3><p>Combined spending for all {trip.members} travelers.</p></div><div className="summary-card"><span>My trip budget</span><h3>{budget ? money(budget,currency) : 'Not set'}</h3>{canEdit && <button className="text-link" onClick={() => setEditing(true)}>Adjust budget <Pencil size={11}/></button>}</div></div>{expenses.length ? <div className="expense-list">{expenses.map(e => <article className="expense-row" key={e.id}><span className="plan-icon"><Wallet size={18}/></span><div className="plan-info"><h3>{e.title}</h3><p>Paid by {e.paidBy} · {e.date} · {e.expensePer === 'person' ? 'Individual' : 'Group'}</p></div><span className="expense-value">{money(e.amount,currency)}</span>{canEdit && <button className="icon-button" onClick={() => store.deleteExpense(e.id)} aria-label={`Delete expense ${e.title}`}><Trash2 size={14}/></button>}</article>)}</div> : <Empty icon={<Wallet/>} title="Good times, clear numbers." text="Add flights, stays, meals, and everything in between. Your total and individual share update automatically."/>}<p className="muted micro">Amounts are recorded in {currency}. Changing your trip currency changes the label; it does not convert previous amounts.</p></>}
+    {tab === 'packing' && <>{packing.length ? <>{packing.map(item => <article className="packing-row" key={item.id}><button className={`packing-check ${item.isCompleted ? 'checked' : ''}`} role="checkbox" aria-checked={item.isCompleted} aria-label={`Packed: ${item.title}`} onClick={() => { if (canEdit) store.togglePackingItem(item.id); }}>{item.isCompleted && <Check size={16}/>}</button><div className={`plan-info ${item.isCompleted ? 'completed' : ''}`}><h3>{item.title}</h3><p>{item.assignedTo}</p></div>{canEdit && <button className="icon-button" onClick={() => store.deletePackingItem(item.id)} aria-label={`Remove ${item.title}`}><Trash2 size={14}/></button>}</article>)}</> : <Empty icon={<Package/>} title="Pack light. Feel ready." text="Create your checklist, assign items to travelers, and check things off as you go."/>}</>}
     {tab === 'ideas' && <>{ideas.length ? <div className="idea-grid">{[...ideas].sort((a,b) => b.votes - a.votes).map(i => <article className="idea-card" key={i.id}><h3>{i.title}</h3><p>{i.description || 'A possibility worth keeping.'}</p><footer><small>By {i.author}</small><button className="idea-vote" aria-label={`Add a vote for ${i.title}`} onClick={() => store.voteIdea(i.id)}><ThumbsUp size={13}/>{i.votes}</button><button className="icon-button" onClick={() => store.deleteIdea(i.id)} aria-label={`Delete idea ${i.title}`}><Trash2 size={13}/></button></footer></article>)}</div> : <Empty icon={<Lightbulb/>} title="Save a little possibility." text="A tucked-away café, a sunrise hike, a place someone mentioned. Give your ideas a home."/>}<p className="muted micro">Ideas and votes are shared on this device. Each tap adds one vote.</p></>}
     </section>}
     {editing && <TripForm trip={trip} onClose={() => setEditing(false)}/>}

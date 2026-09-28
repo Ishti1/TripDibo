@@ -27,6 +27,7 @@ export type Expense = {
   category?: string;
   date: string;
   expensePer?: 'group' | 'person';
+  ownerId?: string;
 };
 
 export type PackingItem = {
@@ -36,6 +37,7 @@ export type PackingItem = {
   assignedTo: string;
   category?: string;
   isCompleted: boolean;
+  ownerId?: string;
 };
 
 export type IdeaItem = {

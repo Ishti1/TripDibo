@@ -10,14 +10,14 @@ import { currencies } from '@/lib/currencies';
 import Modal from './Modal';
 const icons = { hotel: Hotel, flight: Plane, bus: Bus, train: TrainFront, car: Car, other: Ticket };
 
-export default function BookingsPanel({ trip }: { trip: Trip }) {
+export default function BookingsPanel({ trip, subTab, canEdit }: { trip: Trip; subTab: string; canEdit: boolean }) {
   const store = useTripStore();
   const [editing, setEditing] = useState<Booking | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Booking | null>(null);
   const [filter, setFilter] = useState<BookingKind | 'all'>('all');
   const [notice, setNotice] = useState('');
   const [helpModal, setHelpModal] = useState(false);
-  const bookings = store.bookings.filter(b => b.tripId === trip.id).sort((a,b) => a.start.localeCompare(b.start));
+  const bookings = store.bookings.filter(b => b.tripId === trip.id && (b.ownerId || 'common') === subTab).sort((a,b) => a.start.localeCompare(b.start));
   const visible = bookings.filter(b => filter === 'all' || b.kind === filter);
   const total = bookings.filter(b => b.status !== 'cancelled' && b.currency === (trip.currency || 'USD')).reduce((s,b) => s + b.cost, 0);
   function addToTimeline(b: Booking) {
@@ -27,11 +27,11 @@ export default function BookingsPanel({ trip }: { trip: Trip }) {
     setNotice(existing ? 'Linked itinerary entry updated.' : 'Booking added to your itinerary.');
   }
   return <section className="bookings-panel">
-    <div className="section-heading"><div><span className="eyebrow">EVERY CONFIRMATION, ONE PLACE</span><h2>Bookings & tickets</h2><p>Your stays, journeys, and the little details that get you there.</p></div><button className="button primary" onClick={() => setEditing('new')}><Plus size={16}/>Add booking</button></div>
+    <div className="section-heading"><div><span className="eyebrow">EVERY CONFIRMATION, ONE PLACE</span><h2>Bookings & tickets</h2><p>Your stays, journeys, and the little details that get you there.</p></div>{canEdit && <button className="button primary" onClick={() => setEditing('new')}><Plus size={16}/>Add booking</button>}</div>
     <div className="booking-overview"><span className="plan-icon"><Ticket size={23}/></span><div><strong>{bookings.length} saved {bookings.length === 1 ? 'booking' : 'bookings'}</strong><p>{money(total,trip.currency)} booked · excludes cancellations and other currencies</p></div><span className="privacy-chip">Stored on this device</span></div>
     <div className="booking-filters">{(['all','hotel','flight','bus','train','car','other'] as const).map(kind => <button key={kind} className={filter === kind ? 'active' : ''} onClick={() => setFilter(kind)}>{kind === 'all' ? 'All bookings' : bookingLabels[kind]}</button>)}</div>
     {visible.length ? <div className="booking-grid">{visible.map(b => { const Icon = icons[b.kind]; return <article className={`booking-card ${b.status === 'cancelled' ? 'cancelled' : ''}`} key={b.id}>
-      <header><span className="booking-kind"><Icon size={19}/>{bookingLabels[b.kind]}</span><span className={`booking-status ${b.status}`}>{b.status}</span><button className="icon-button" aria-label={`Edit booking ${b.title}`} onClick={() => setEditing(b)}><Pencil size={15}/></button><button className="icon-button" aria-label={`Remove booking ${b.title}`} onClick={() => setDeleting(b)}><Trash2 size={15}/></button></header>
+      <header><span className="booking-kind"><Icon size={19}/>{bookingLabels[b.kind]}</span><span className={`booking-status ${b.status}`}>{b.status}</span>{canEdit && <><button className="icon-button" aria-label={`Edit booking ${b.title}`} onClick={() => setEditing(b)}><Pencil size={15}/></button><button className="icon-button" aria-label={`Remove booking ${b.title}`} onClick={() => setDeleting(b)}><Trash2 size={15}/></button></>}</header>
       <h3>{b.title}</h3><p className="booking-provider">{b.provider}{b.serviceNumber && ` · ${b.serviceNumber}`}</p>
       {b.kind !== 'hotel' && <div className="booking-route"><span>{b.from || 'Departure'}</span><ArrowRight size={18}/><span>{b.to || 'Arrival'}</span></div>}
       {b.kind === 'hotel' && b.address && <p className="booking-address"><MapPin size={14}/>{b.address}</p>}
@@ -39,7 +39,7 @@ export default function BookingsPanel({ trip }: { trip: Trip }) {
       <div className="booking-reference"><span>Confirmation / PNR<strong>{b.reference || 'Not added'}</strong></span><span>{b.kind === 'hotel' ? 'Room / guests' : 'Seat / class'}<strong>{b.seat || 'Not assigned'}</strong></span></div>
       <details className="booking-details"><summary>Traveler, notes & documents {b.attachments.length > 0 && `(${b.attachments.length})`}</summary><p><strong>Traveler:</strong> {b.traveler || 'Not added'}</p>{b.notes && <p className="booking-notes">{b.notes}</p>}{b.url && <a className="text-link" href={b.url} target="_blank" rel="noopener noreferrer">Open booking page <ExternalLink size={13}/></a>}<div className="ticket-list">{b.attachments.map(f => <button key={f.id} onClick={() => downloadTicket(f).catch(e => setNotice(e.message))}><Paperclip size={14}/><span>{f.name}</span><Download size={14}/></button>)}</div></details>
       <footer><div><strong>{money(b.cost,b.currency)}</strong><span>{b.recordExpense ? 'Included in expenses' : 'Not recorded as an expense'}</span></div>{b.status !== 'cancelled' && <button className="text-link" onClick={() => addToTimeline(b)}><CalendarPlus size={14}/>{store.itinerary.some(i => i.bookingId === b.id) ? 'Update timeline' : 'Add to timeline'}</button>}</footer>
-    </article>; })}</div> : <div className="detail-empty"><Ticket/><h3>{bookings.length ? 'No bookings in this category.' : 'All booked? Keep it together.'}</h3><p>Save hotel reservations, air tickets, bus and train journeys, confirmation numbers, and ticket documents.</p><button className="button secondary" onClick={() => setEditing('new')}><Plus size={15}/>Save a booking</button></div>}
+    </article>; })}</div> : <div className="detail-empty"><Ticket/><h3>{bookings.length ? 'No bookings in this category.' : 'All booked? Keep it together.'}</h3><p>Save hotel reservations, air tickets, bus and train journeys, confirmation numbers, and ticket documents.</p>{canEdit && <button className="button secondary" onClick={() => setEditing('new')}><Plus size={15}/>Save a booking</button>}</div>}
     
     <div style={{ textAlign: 'center', marginTop: '32px' }}>
       <button className="text-link" onClick={() => setHelpModal(true)}>Need help with bookings? <ExternalLink size={12} style={{marginLeft: '4px'}}/></button>
@@ -75,13 +75,13 @@ export default function BookingsPanel({ trip }: { trip: Trip }) {
       <div className="modal-footer"><button className="button secondary" onClick={() => setHelpModal(false)}>Close</button></div>
     </Modal>}
 
-    {editing && <BookingForm trip={trip} booking={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} onSaved={() => setNotice('Booking saved, including any attached tickets.')}/>}
+    {editing && <BookingForm trip={trip} subTab={subTab} booking={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} onSaved={() => setNotice('Booking saved, including any attached tickets.')}/>}
     {deleting && <Modal title="Remove this booking?" subtitle="Recorded expenses are kept. Attached ticket files will be removed from this browser." onClose={() => setDeleting(null)}><p>{deleting.title}</p><div className="modal-footer"><button className="button secondary" onClick={() => setDeleting(null)}>Keep booking</button><button className="button danger" onClick={async () => { const target=deleting; try { await Promise.all(target.attachments.map(f => removeTicket(f.id))); store.deleteBooking(target.id); setDeleting(null); setNotice('Booking removed. Any recorded payment remains in expenses.'); } catch { setNotice('Could not remove the ticket files. Please try again.'); } }}>Remove booking</button></div></Modal>}
     {notice && <div className="toast" role="status">{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification"><X size={15}/></button></div>}
   </section>;
 }
 
-function BookingForm({ trip, booking, onClose, onSaved }: { trip: Trip; booking?: Booking; onClose: () => void; onSaved: () => void }) {
+function BookingForm({ trip, booking, subTab, onClose, onSaved }: { trip: Trip; booking?: Booking; subTab: string; onClose: () => void; onSaved: () => void }) {
   const saveBooking = useTripStore(s => s.saveBooking);
   const [form,setForm] = useState<Omit<Booking,'id'|'tripId'>>(booking || { kind:'hotel', title:'', provider:'', reference:'', serviceNumber:'', traveler:'', seat:'', from:'', to:'', start:trip.startDate ? trip.startDate + 'T14:00' : '', end:'', startTimezone:'', endTimezone:'', address:'', status:'confirmed', cost:0, currency:trip.currency || 'USD', paidBy:'You', recordExpense:false, notes:'', url:'', attachments:[] });
   const [costPer, setCostPer] = useState<'group'|'person'>('person');
@@ -94,7 +94,8 @@ function BookingForm({ trip, booking, onClose, onSaved }: { trip: Trip; booking?
     try {
       for (const file of files) added.push(await saveTicket(file));
       const finalCost = costPer === 'group' && form.cost ? Number(form.cost) / (trip.members || 1) : form.cost;
-      saveBooking({ ...form, cost: finalCost, title:form.title.trim(), tripId:trip.id, id:booking?.id, attachments:[...form.attachments,...added] });
+      const ownerId = booking?.ownerId || (subTab === 'common' ? 'common' : subTab);
+      saveBooking({ ...form, cost: finalCost, title:form.title.trim(), tripId:trip.id, id:booking?.id, attachments:[...form.attachments,...added], ownerId });
       const removed = booking?.attachments.filter(f => !form.attachments.some(kept => kept.id === f.id)) || [];
       await Promise.allSettled(removed.map(f => removeTicket(f.id)));
       onSaved(); onClose();

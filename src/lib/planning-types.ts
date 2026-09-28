@@ -7,6 +7,7 @@ export type Booking = {
   address: string; status: 'confirmed' | 'pending' | 'cancelled';
   cost: number; currency: string; paidBy: string; recordExpense: boolean;
   notes: string; url: string; attachments: TicketFile[];
+  ownerId?: string;
 };
 export type BudgetCategory = { name: string; amount: number; reason: string };
 export type BudgetPlan = { currency: string; categories: BudgetCategory[]; total: number; assumptions: string[] };
