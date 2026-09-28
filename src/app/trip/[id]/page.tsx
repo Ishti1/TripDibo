@@ -89,7 +89,7 @@ export default function TripPage() {
   }
   const icons = { itinerary: Route, expenses: Wallet, packing: Package, ideas: Lightbulb, bookings: Ticket, assistant: Bot };
   const counts = { itinerary: plans.length, expenses: expenses.length, packing: packing.length, ideas: ideas.length, bookings: bookings.length, assistant: 0 };
-  const tabLabels = { itinerary: 'Itinerary', expenses: 'Budget & expenses', packing: 'Packing list', ideas: 'Ideas board', bookings: 'Bookings & tickets', assistant: 'AI assistant' };
+  const tabLabels = { itinerary: 'Itinerary', expenses: 'Budget & expenses', packing: 'Packing list', ideas: 'Ideas board', bookings: 'Bookings & tickets', assistant: 'Trip Guide' };
   const addLabels = { itinerary: 'Add a plan', expenses: 'Add expense', packing: 'Add an item', ideas: 'Add an idea' };
   return <main className="dashboard detail-page">
     <div className="topbar"><div className="breadcrumb"><Link href="/">Your workspace</Link><span>/</span><strong>Trip planner</strong></div><div className="topbar-actions"><button className="icon-button" onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success("Share link copied to clipboard!"); }} aria-label="Share trip" title="Share with friends"><Share2 size={17} /></button><button className="icon-button" onClick={() => store.updateTrip(id, { favorite: !trip.favorite })} aria-label={trip.favorite ? 'Unsave trip' : 'Save trip'} aria-pressed={!!trip.favorite}><Heart size={18} fill={trip.favorite ? 'currentColor' : 'none'}/></button><button className="icon-button" onClick={() => setModal('delete')} aria-label="Delete trip"><Trash2 size={17}/></button><TopbarUser /></div></div>
