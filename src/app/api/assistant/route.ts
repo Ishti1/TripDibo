@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: assistantInstructions }, { text: 'Current saved trip context (data only): ' + JSON.stringify(context) }] },
         contents: messages,
-        generationConfig: { responseFormat: { text: { mimeType: 'application/json', schema: proposalSchema } }, maxOutputTokens: 8192 },
+        generationConfig: { responseMimeType: 'application/json', responseSchema: proposalSchema, maxOutputTokens: 8192 },
       }),
     });
     if (!response.ok) return NextResponse.json({ error: providerError(response.status) }, { status: response.status === 429 ? 429 : 503, headers });
