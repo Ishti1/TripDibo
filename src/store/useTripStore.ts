@@ -273,7 +273,7 @@ export const useTripStore = create<TripStore>()(
         set(state => {
           const existingExpense = state.expenses.find(e => e.bookingId === id);
           const otherExpenses = state.expenses.filter(e => e.bookingId !== id);
-          const linkedExpense: Expense = { id: existingExpense?.id || 'exp_' + crypto.randomUUID(), bookingId: id, tripId: data.tripId, title: data.title, amount: data.cost, paidBy: data.paidBy || 'You', category: data.kind, date: data.start.slice(0,10) };
+          const linkedExpense: Expense = { id: existingExpense?.id || 'exp_' + crypto.randomUUID(), bookingId: id, tripId: data.tripId, title: data.title, amount: data.cost, paidBy: data.paidBy || 'You', category: data.kind, date: data.start.slice(0,10), expensePer: 'person' };
           const newActivity: ActivityLog = { id: 'act_' + crypto.randomUUID(), tripId: data.tripId, user: 'You', action: data.id ? 'updated a booking:' : 'added a booking:', target: data.title, time: 'Just now' };
           return {
             bookings: state.bookings.some(b => b.id === id) ? state.bookings.map(b => b.id === id ? booking : b) : [...state.bookings, booking],

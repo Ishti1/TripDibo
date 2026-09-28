@@ -48,7 +48,7 @@ export default function BookingsPanel({ trip }: { trip: Trip }) {
 function BookingForm({ trip, booking, onClose, onSaved }: { trip: Trip; booking?: Booking; onClose: () => void; onSaved: () => void }) {
   const saveBooking = useTripStore(s => s.saveBooking);
   const [form,setForm] = useState<Omit<Booking,'id'|'tripId'>>(booking || { kind:'hotel', title:'', provider:'', reference:'', serviceNumber:'', traveler:'', seat:'', from:'', to:'', start:trip.startDate ? trip.startDate + 'T14:00' : '', end:'', startTimezone:'', endTimezone:'', address:'', status:'confirmed', cost:0, currency:trip.currency || 'USD', paidBy:'You', recordExpense:false, notes:'', url:'', attachments:[] });
-  const [costPer, setCostPer] = useState<'group'|'person'>('group');
+  const [costPer, setCostPer] = useState<'group'|'person'>('person');
   const [files,setFiles] = useState<File[]>([]); const [error,setError] = useState(''); const [saving,setSaving] = useState(false);
   const set = <K extends keyof typeof form>(key: K,value: typeof form[K]) => setForm(f => ({...f,[key]:value}));
   async function submit(e: React.FormEvent) {
@@ -57,7 +57,7 @@ function BookingForm({ trip, booking, onClose, onSaved }: { trip: Trip; booking?
     setSaving(true); setError(''); const added: TicketFile[] = [];
     try {
       for (const file of files) added.push(await saveTicket(file));
-      const finalCost = costPer === 'person' && form.cost ? Number(form.cost) * (trip.members || 1) : form.cost;
+      const finalCost = costPer === 'group' && form.cost ? Number(form.cost) / (trip.members || 1) : form.cost;
       saveBooking({ ...form, cost: finalCost, title:form.title.trim(), tripId:trip.id, id:booking?.id, attachments:[...form.attachments,...added] });
       const removed = booking?.attachments.filter(f => !form.attachments.some(kept => kept.id === f.id)) || [];
       await Promise.allSettled(removed.map(f => removeTicket(f.id)));
